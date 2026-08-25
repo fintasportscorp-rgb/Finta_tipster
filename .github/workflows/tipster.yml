@@ -1,0 +1,64 @@
+name: Tipster weekly refresh
+
+# Free, always-on runner. Sunday 22:00 UTC (~23:00 CET / 00:00 CEST).
+# Also manually triggerable (workflow_dispatch) so we can test which scrapers
+# survive a datacenter IP. build_page.py is resilient to missing sources.
+on:
+  schedule:
+    - cron: '0 22 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tipster-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chrome (for Selenium)
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy requests beautifulsoup4 selenium "understatapi==0.7.1" tqdm lxml
+
+      - name: Run scrapers (resilient; report per-source result)
+        run: |
+          mkdir -p understat_data data input
+          for s in understat.py friendly_scraper.py soccerstats_scraper.py tm_absences.py formation_analysis.py get_odds.py expert_scraper.py; do
+            echo "::group::$s"
+            if python "scripts/$s"; then echo "RESULT $s = OK"; else echo "RESULT $s = FAILED (continuing)"; fi
+            echo "::endgroup::"
+          done
+
+      - name: Build dashboard data
+        run: python scripts/build_page.py
+
+      - name: Guard + commit + push (Vercel auto-deploys)
+        run: |
+          size=$(stat -c%s web/public/data.json || echo 0)
+          echo "data.json = $size bytes"
+          if [ "$size" -lt 5000 ]; then
+            echo "Placeholder-sized data.json ($size B) — NOT committing (keeping last good live)."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html web/public/data.json
+          if git diff --cached --quiet; then echo "No changes."; exit 0; fi
+          git commit -m "data: weekly tipster refresh (CI) $(date +%F)"
+          git push
