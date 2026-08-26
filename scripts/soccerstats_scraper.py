@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
+import urllib.parse
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -88,6 +90,32 @@ SS_TO_UNDERSTAT = {
 
 SEGMENTS = ["0-15", "16-30", "31-45", "46-60", "61-75", "76-90"]
 
+# When SCRAPINGANT_KEY is set (CI), fetch soccerstats via ScrapingAnt (reliable, 1 credit,
+# no Selenium timeouts). Locally, with no key, use the Selenium driver.
+_SA_KEY = os.getenv("SCRAPINGANT_KEY")
+_SA_MODES = ["browser=false&proxy_type=datacenter", "browser=false&proxy_type=residential"]
+
+
+def fetch_html(url, driver, retries=2):
+    if _SA_KEY:
+        for attempt in range(retries):
+            mode = _SA_MODES[min(attempt, len(_SA_MODES) - 1)]
+            try:
+                api = (
+                    "https://api.scrapingant.com/v2/general?url="
+                    + urllib.parse.quote(url, safe="")
+                    + f"&x-api-key={_SA_KEY}&{mode}"
+                )
+                r = requests.get(api, timeout=120)
+                if r.status_code == 200 and len(r.text) >= 8000:
+                    return r.text
+            except Exception:
+                pass
+        return ""
+    driver.get(url)
+    time.sleep(3)
+    return driver.page_source
+
 
 def setup_webdriver():
     opts = Options()
@@ -112,21 +140,22 @@ def setup_webdriver():
 def get_team_links(driver, league_key):
     """Get team stats links from the results page."""
     url = f"https://www.soccerstats.com/results.asp?league={league_key}"
-    driver.get(url)
-    time.sleep(3)
-    links = driver.find_elements(By.CSS_SELECTOR, "a[href*='teamstats']")
+    html = fetch_html(url, driver)
+    soup = BeautifulSoup(html, "html.parser")
     teams = {}
-    for link in links:
-        href = link.get_attribute("href") or ""
-        text = (link.get_attribute("textContent") or "").strip()
+    for a in soup.find_all("a", href=lambda x: x and "teamstats" in x):
+        href = a.get("href") or ""
+        text = a.get_text(strip=True)
         if not href or not text:
             continue
         # Extract slug from URL: teamstats.asp?league=england&stats=u324-arsenal
         if "stats=" in href:
-            slug = href.split("stats=")[-1]
+            slug = href.split("stats=")[-1].split("&")[0]
             # Remove ID prefix (u324-arsenal -> arsenal)
             if "-" in slug:
                 slug = slug.split("-", 1)[1] if slug.startswith("u") else slug
+            if not href.startswith("http"):
+                href = "https://www.soccerstats.com/" + href.lstrip("/")
             teams[slug] = href
     return teams
 
@@ -171,9 +200,7 @@ def scrape_league(driver, league_key, league_name):
         team_name = SS_TO_UNDERSTAT.get(slug, slug.replace("-", " ").title())
         print(f"    {team_name}...", end=" ", flush=True)
         try:
-            driver.get(url)
-            time.sleep(3)
-            soup = BeautifulSoup(driver.page_source, "html.parser")
+            soup = BeautifulSoup(fetch_html(url, driver), "html.parser")
             timing = parse_timing_table(soup)
             if timing:
                 row = {"team": team_name, "league": league_name}
@@ -199,7 +226,9 @@ def main():
     print("  SOCCERSTATS GOAL TIMING SCRAPER")
     print("=" * 60)
 
-    driver = setup_webdriver()
+    driver = None if _SA_KEY else setup_webdriver()
+    if _SA_KEY:
+        print("  (using ScrapingAnt - no Selenium)")
 
     all_results = []
     for league_key, league_name in LEAGUES.items():
@@ -209,7 +238,8 @@ def main():
         except Exception as e:
             print(f"\n  ERROR for {league_name}: {e}")
 
-    driver.quit()
+    if driver:
+        driver.quit()
 
     if not all_results:
         print("\nNo data scraped!")
