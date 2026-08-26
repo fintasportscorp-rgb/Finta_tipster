@@ -32,9 +32,9 @@ export interface TeamComponents {
   results: number | null;
   xg: number | null;
   availability: number | null;
-  formation: number | null;
   odds: number | null;
   tips: number | null;
+  timing: number | null;
 }
 
 export interface TeamData {
@@ -96,10 +96,9 @@ export type SourceKey =
   | "results"
   | "xg"
   | "availability"
-  | "formation"
   | "odds"
   | "tips"
-  | "h2h";
+  | "timing";
 
 export interface GoalTimingSide {
   gf: number[];

@@ -65,9 +65,9 @@ WEIGHTS = {
     "results": 0.25,
     "xg": 0.20,
     "availability": 0.20,
-    "formation": 0.10,
     "odds": 0.15,
     "tips": 0.10,
+    "timing": 0.10,
 }
 DAYS_AHEAD = 14  # how far ahead to look for upcoming matches
 
@@ -815,6 +815,27 @@ def extract_match_tips(tips_df, home_team, away_team):
 
 # ── Composite score ──────────────────────────────────────────────────────────
 
+_TIMING_SEGMENTS = ["0-15", "16-30", "31-45", "46-60", "61-75", "76-90"]
+
+
+def compute_timing_score(team_row, opp_row):
+    """Timing edge (0-100): high when a team scores in the very periods the opponent
+    concedes most. Overlap of the team's goals-for distribution with the opponent's
+    goals-against distribution, scaled so a uniform/no-edge profile ~= 50."""
+    if team_row is None or opp_row is None:
+        return None
+    tgf = [float(team_row.get(f"gf_{s}", 0) or 0) for s in _TIMING_SEGMENTS]
+    oga = [float(opp_row.get(f"ga_{s}", 0) or 0) for s in _TIMING_SEGMENTS]
+    ttgf, toga = sum(tgf), sum(oga)
+    if ttgf == 0 or toga == 0:
+        return None
+    tdist = [g / ttgf for g in tgf]
+    odist = [g / toga for g in oga]
+    overlap = sum(tdist[i] * odist[i] for i in range(len(_TIMING_SEGMENTS)))
+    # 0-1 scale (matches the other components): uniform/no-edge ~= 0.5, strong edge -> 1.0
+    return min(1.0, overlap / (1.0 / len(_TIMING_SEGMENTS)) * 0.5)
+
+
 def compute_composite(components, weights):
     available = {k: v for k, v in components.items() if v is not None}
     if not available:
@@ -905,21 +926,31 @@ def build_match_data(xg_df, abs_df, form_df, odds_df, tips_df, match_row,
                     "other_markets": None,
                 }
 
+    # Timing edge: does each team score when THIS opponent tends to concede?
+    home_gt_row = away_gt_row = None
+    if goal_timing_df is not None:
+        _h = goal_timing_df[goal_timing_df["team"] == home_us]
+        _a = goal_timing_df[goal_timing_df["team"] == away_us]
+        home_gt_row = _h.iloc[0] if not _h.empty else None
+        away_gt_row = _a.iloc[0] if not _a.empty else None
+    home_timing = compute_timing_score(home_gt_row, away_gt_row)
+    away_timing = compute_timing_score(away_gt_row, home_gt_row)
+
     home_components = {
         "results": home_form["results"],
         "xg": home_form["xg"],
         "availability": home_avail["score"] if home_avail else None,
-        "formation": home_form_stab["score"] if home_form_stab else None,
         "odds": match_odds["implied_home"] if match_odds else None,
         "tips": match_tips["home_score"] if match_tips else None,
+        "timing": home_timing,
     }
     away_components = {
         "results": away_form["results"],
         "xg": away_form["xg"],
         "availability": away_avail["score"] if away_avail else None,
-        "formation": away_form_stab["score"] if away_form_stab else None,
         "odds": match_odds["implied_away"] if match_odds else None,
         "tips": match_tips["away_score"] if match_tips else None,
+        "timing": away_timing,
     }
 
     home_score = compute_composite(home_components, WEIGHTS)
@@ -953,14 +984,14 @@ def build_match_data(xg_df, abs_df, form_df, odds_df, tips_df, match_row,
     has_tips = match_tips is not None and len(match_tips.get("tips", [])) > 0
     has_h2h = h2h is not None
 
+    has_timing = home_timing is not None or away_timing is not None
     sources = {
         "results": has_results,
         "xg": has_xg,
         "availability": has_availability,
-        "formation": has_formation,
         "odds": has_odds,
         "tips": has_tips,
-        "h2h": has_h2h,
+        "timing": has_timing,
     }
     validity_count = sum(1 for v in sources.values() if v)
     validity_total = len(sources)
@@ -1044,9 +1075,9 @@ def build_match_data(xg_df, abs_df, form_df, odds_df, tips_df, match_row,
                 "results": pct(home_form["results"]),
                 "xg": pct(home_form["xg"]),
                 "availability": pct(home_avail["score"]) if home_avail else None,
-                "formation": pct(home_form_stab["score"]) if home_form_stab else None,
                 "odds": pct(match_odds["implied_home"]) if match_odds else None,
                 "tips": pct(match_tips["home_score"]) if match_tips else None,
+                "timing": pct(home_timing),
             },
             "form_string": home_form["form_string"],
             "xg_rolling": home_form["xg_rolling"],
@@ -1069,9 +1100,9 @@ def build_match_data(xg_df, abs_df, form_df, odds_df, tips_df, match_row,
                 "results": pct(away_form["results"]),
                 "xg": pct(away_form["xg"]),
                 "availability": pct(away_avail["score"]) if away_avail else None,
-                "formation": pct(away_form_stab["score"]) if away_form_stab else None,
                 "odds": pct(match_odds["implied_away"]) if match_odds else None,
                 "tips": pct(match_tips["away_score"]) if match_tips else None,
+                "timing": pct(away_timing),
             },
             "form_string": away_form["form_string"],
             "xg_rolling": away_form["xg_rolling"],

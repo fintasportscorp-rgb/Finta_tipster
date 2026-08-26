@@ -9,18 +9,11 @@ export default function Header({ data }: { data: Dashboard | null }) {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-[color:hsl(var(--primary)/0.6)] shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 h-5 w-5 p-0.5" fill="none" aria-hidden>
-              <path
-                d="M3 17l4-6 4 3 5-8 5 5"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-white dark:text-primary-foreground"
-              />
-            </svg>
-          </div>
+          <img
+            src="/finta_logo.png"
+            alt="Finta"
+            className="h-8 w-8 shrink-0 rounded-lg object-contain"
+          />
           <div className="min-w-0 leading-tight">
             <h1 className="truncate text-sm font-bold sm:text-base">
               Finta Tipster

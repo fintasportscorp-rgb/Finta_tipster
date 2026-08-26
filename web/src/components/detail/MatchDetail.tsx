@@ -8,8 +8,6 @@ import FormMatchesTable from "./FormMatchesTable";
 import AbsencesList from "./AbsencesList";
 import XgChart from "./XgChart";
 import GoalTimingChart from "./GoalTimingChart";
-import FormationsList from "./FormationsList";
-import H2HPanel from "./H2HPanel";
 import OddsMarkets from "./OddsMarkets";
 import ValueBetsPanel from "./ValueBetsPanel";
 import TipsPanel from "./TipsPanel";
@@ -24,7 +22,7 @@ export default function MatchDetail({
   compact?: boolean;
 }) {
   const weights = useMemo<Record<string, number>>(
-    () => ({ results: 0.25, xg: 0.2, availability: 0.2, formation: 0.1, odds: 0.15, tips: 0.1 }),
+    () => ({ results: 0.25, xg: 0.2, availability: 0.2, odds: 0.15, tips: 0.1, timing: 0.1 }),
     [],
   );
 
@@ -65,19 +63,6 @@ export default function MatchDetail({
               <XgChart team={m.home.team} data={m.home.xg_rolling} window={rollingWindow} />
               <XgChart team={m.away.team} data={m.away.xg_rolling} window={rollingWindow} />
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <FormationsList
-                team={m.home.team}
-                hist={m.home.formation_history}
-                radicalChanges={m.home.radical_changes}
-              />
-              <FormationsList
-                team={m.away.team}
-                hist={m.away.formation_history}
-                radicalChanges={m.away.radical_changes}
-              />
-            </div>
-            <H2HPanel h2h={m.h2h} homeTeam={m.home_team} awayTeam={m.away_team} />
           </TabsContent>
 
           <TabsContent value="market" className="space-y-4 outline-none">

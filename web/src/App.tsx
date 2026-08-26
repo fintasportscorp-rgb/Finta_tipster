@@ -107,7 +107,7 @@ export default function App() {
       <div className="min-h-dvh">
         <Header data={data} />
 
-        <main className="container py-4 sm:py-6">
+        <main className="mx-auto w-full max-w-[1760px] px-3 py-4 sm:px-4 sm:py-6">
           {loading ? (
             <LoadingState />
           ) : error ? (

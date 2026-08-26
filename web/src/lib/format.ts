@@ -4,9 +4,9 @@ export const METRICS = [
   { key: "results", label: "Results" },
   { key: "xg", label: "xG" },
   { key: "availability", label: "Availability" },
-  { key: "formation", label: "Formation" },
   { key: "odds", label: "Odds" },
   { key: "tips", label: "Tips" },
+  { key: "timing", label: "Timing" },
 ] as const;
 
 export type MetricKey = (typeof METRICS)[number]["key"];
@@ -15,10 +15,9 @@ export const SOURCES: { key: SourceKey; label: string }[] = [
   { key: "results", label: "Results" },
   { key: "xg", label: "xG" },
   { key: "availability", label: "Absences" },
-  { key: "formation", label: "Formation" },
   { key: "odds", label: "Odds" },
   { key: "tips", label: "Tipsters" },
-  { key: "h2h", label: "H2H" },
+  { key: "timing", label: "Timing" },
 ];
 
 const LEAGUE_COLORS: Record<string, string> = {
