@@ -1,47 +1,95 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dashboard, Match, SourceKey } from "./types";
-import Filters from "./components/Filters";
-import MatchTable, { type SortKey } from "./components/MatchTable";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Ghost, RotateCcw } from "lucide-react";
+import { useDashboard } from "@/hooks/use-dashboard";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import FilterBar, { type FilterState } from "@/components/matches/FilterBar";
+import MatchTable, { type SortKey } from "@/components/matches/MatchTable";
+import MatchCards from "@/components/matches/MatchCards";
+
+function LoadingState() {
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Skeleton className="h-9 flex-1" />
+        <Skeleton className="h-9 w-48" />
+      </div>
+      <div className="flex gap-1.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-20 rounded-full" />
+        ))}
+      </div>
+      <Card className="divide-y">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 flex-1" />
+            <Skeleton className="hidden h-5 w-10 sm:block" />
+            <Skeleton className="h-7 w-12" />
+            <Skeleton className="h-5 w-14" />
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Card className="mx-auto mt-10 max-w-md border-destructive/30 p-6 text-center">
+      <AlertTriangle className="mx-auto mb-2 !size-8 text-destructive" />
+      <h2 className="font-bold">Failed to load dashboard data</h2>
+      <p className="mt-1 break-all text-xs text-muted-foreground">{message}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground/70">
+        Run the Python pipeline to generate data.json.
+      </p>
+      <Button onClick={onRetry} variant="outline" size="sm" className="mt-4 gap-1.5">
+        <RotateCcw className="!size-3.5" /> Retry
+      </Button>
+    </Card>
+  );
+}
+
+function EmptyState({ onReset }: { onReset: () => void }) {
+  return (
+    <Card className="p-10 text-center">
+      <Ghost className="mx-auto mb-3 !size-8 text-muted-foreground/50" />
+      <h2 className="text-sm font-semibold">No matches match your filters</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Try removing a source filter or clearing the search.</p>
+      <Button onClick={onReset} variant="outline" size="sm" className="mt-4 gap-1.5">
+        <RotateCcw className="!size-3.5" /> Reset filters
+      </Button>
+    </Card>
+  );
+}
 
 export default function App() {
-  const [data, setData] = useState<Dashboard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [active, setActive] = useState<Set<SourceKey>>(new Set());
+  const { data, error, loading, reload } = useDashboard();
+  const [filters, setFilters] = useState<FilterState>({
+    sources: new Set(),
+    league: "all",
+    query: "",
+  });
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState(1);
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
 
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data.json`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((d: Dashboard) => setData(d))
-      .catch((e) => setError(String(e)));
-  }, []);
-
   const matches = data?.matches ?? [];
 
-  const passesFilters = (m: Match, filters: Set<SourceKey>) => {
-    if (filters.size === 0) return true;
-    for (const f of filters) if (!m.sources?.[f]) return false;
-    return true;
-  };
-
-  const visible = useMemo(
-    () => matches.filter((m) => passesFilters(m, active)),
-    [matches, active],
-  );
-
-  const toggleFilter = (k: SourceKey) => {
-    const next = new Set(active);
-    next.has(k) ? next.delete(k) : next.add(k);
-    setActive(next);
-    // Collapse the open row if it no longer passes the new filter set.
-    const sel = matches.find((x) => x.id === selectedId);
-    if (sel && !passesFilters(sel, next)) setSelectedId(null);
-  };
+  const visible = useMemo(() => {
+    const q = filters.query.trim().toLowerCase();
+    return matches.filter((m) => {
+      if (filters.league !== "all" && m.league !== filters.league) return false;
+      if (q && !m.home_team.toLowerCase().includes(q) && !m.away_team.toLowerCase().includes(q))
+        return false;
+      for (const s of filters.sources) if (!m.sources?.[s]) return false;
+      return true;
+    });
+  }, [matches, filters]);
 
   const onSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => -d);
@@ -51,60 +99,49 @@ export default function App() {
     }
   };
 
-  const onToggleMatch = (id: string | number) =>
-    setSelectedId((cur) => (cur === id ? null : id));
-
-  if (error)
-    return (
-      <div className="p-8 text-center text-bad">
-        Failed to load data.json — {error}
-        <div className="text-dim text-sm mt-2">Run the Python build to generate it.</div>
-      </div>
-    );
-  if (!data)
-    return <div className="p-8 text-center text-dim">Loading…</div>;
+  const resetFilters = () =>
+    setFilters({ sources: new Set(), league: "all", query: "" });
 
   return (
-    <div className="p-2 sm:p-4">
-      <div className="max-w-[1100px] mx-auto w-full">
-        <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 mb-4">
-          <h1 className="text-lg sm:text-xl font-bold">Finta Tipster — Big 5 Match Form</h1>
-          <div className="text-xs text-dim">
-            {matches.length} matches · {data.generated_at}
-          </div>
-        </header>
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-dvh">
+        <Header data={data} />
 
-        <Filters
-          matches={matches}
-          active={active}
-          onToggle={toggleFilter}
-          onClear={() => setActive(new Set())}
-        />
+        <main className="container py-4 sm:py-6">
+          {loading ? (
+            <LoadingState />
+          ) : error ? (
+            <ErrorState message={error} onRetry={reload} />
+          ) : data ? (
+            <>
+              <FilterBar matches={matches} filters={filters} onChange={setFilters} />
 
-        {visible.length === 0 ? (
-          <div className="text-center text-dim py-10 text-base">No matches match the filters.</div>
-        ) : (
-          <MatchTable
-            matches={visible}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-            selectedId={selectedId}
-            onToggle={onToggleMatch}
-            rollingWindow={data.rolling_window}
-          />
-        )}
+              {visible.length === 0 ? (
+                <EmptyState onReset={resetFilters} />
+              ) : (
+                <>
+                  <div className="mt-4 hidden md:block">
+                    <MatchTable
+                      matches={visible}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={onSort}
+                      selectedId={selectedId}
+                      onToggle={(id) => setSelectedId((cur) => (cur === id ? null : id))}
+                      rollingWindow={data.rolling_window}
+                    />
+                  </div>
+                  <div className="mt-4 md:hidden">
+                    <MatchCards matches={visible} rollingWindow={data.rolling_window} />
+                  </div>
+                </>
+              )}
 
-        <div className="text-center text-dim mt-2 text-xs">
-          {visible.length} / {matches.length} matches
-        </div>
-
-        <footer className="text-center mt-5 text-dim text-[11px] leading-relaxed">
-          Weights: Results 25% · xG 20% · Availability 20% · Formation 10% · Market 15% · Tipsters
-          10% · Form: L=League F=Friendly S=Last Season (friendlies used when &lt;
-          {data.league_match_threshold} league matches) · Tap a row to expand
-        </footer>
+              <Footer data={data} visibleCount={visible.length} />
+            </>
+          ) : null}
+        </main>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

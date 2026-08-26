@@ -53,31 +53,18 @@ python scripts/expert_scraper.py
 # 2. Build the dashboard data (writes web/public/data.json)
 python scripts/build_page.py
 
-# 3. Build the web app and publish/update the GitHub Pages site
+# 3. Preview the web app locally (optional)
 cd web
-npm run deploy      # builds dist/ and pushes it to the gh-pages branch
+npm run dev          # http://localhost:5173
 ```
 
-### One-liner (refresh data already scraped → rebuild → publish)
+### Publishing
 
-```bash
-python scripts/build_page.py && cd web && npm run deploy && cd ..
-```
+Pushing to `main` triggers an automatic **Vercel** deployment of `web/`
+(production: **https://tipster.fintalab.com**). No manual deploy step needed.
 
-`npm run deploy` runs `vite build` and then `gh-pages -d dist`, pushing the built
-site to the `gh-pages` branch of the `origin` remote.
-
-## First-time GitHub Pages setup
-
-1. Push this repo to `https://github.com/fintasportscorp-rgb/Finta_tipster.git`.
-2. Run `cd web && npm run deploy` once to create the `gh-pages` branch.
-3. In the repo **Settings → Pages**, set **Source = Deploy from a branch**,
-   **Branch = `gh-pages` / root**, and save.
-4. The site publishes at **https://fintasportscorp-rgb.github.io/Finta_tipster/**
-   (the Vite `base` in `web/vite.config.ts` is set to `/Finta_tipster/` to match).
-
-> Deploying to a different repo/path? Set the base at build time:
-> `BASE_PATH=/your-repo/ npm run deploy`  (use `BASE_PATH=/` for a root/user site).
+> Deploying elsewhere? The Vite `base` defaults to `/`; override at build time
+> with `BASE_PATH=/your-repo/ npm run build` for sub-path hosting.
 
 ## Local development
 

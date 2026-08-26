@@ -1,13 +1,15 @@
-import type { Match, SourceKey } from "../types";
+import type { Match, SourceKey } from "@/types";
 
-export const METRICS: { key: keyof Match["home"]["components"]; label: string; w: string }[] = [
-  { key: "results", label: "Results", w: "25%" },
-  { key: "xg", label: "xG", w: "20%" },
-  { key: "availability", label: "Avail", w: "20%" },
-  { key: "formation", label: "Form", w: "10%" },
-  { key: "odds", label: "Odds", w: "15%" },
-  { key: "tips", label: "Tips", w: "10%" },
-];
+export const METRICS = [
+  { key: "results", label: "Results" },
+  { key: "xg", label: "xG" },
+  { key: "availability", label: "Availability" },
+  { key: "formation", label: "Formation" },
+  { key: "odds", label: "Odds" },
+  { key: "tips", label: "Tips" },
+] as const;
+
+export type MetricKey = (typeof METRICS)[number]["key"];
 
 export const SOURCES: { key: SourceKey; label: string }[] = [
   { key: "results", label: "Results" },
@@ -19,28 +21,60 @@ export const SOURCES: { key: SourceKey; label: string }[] = [
   { key: "h2h", label: "H2H" },
 ];
 
-export function scoreColor(s: number): string {
-  return s >= 70 ? "text-good" : s >= 50 ? "text-warn" : "text-bad";
-}
-export function fillColor(v: number): string {
-  return v >= 60 ? "bg-good" : v >= 40 ? "bg-warn" : "bg-bad";
-}
-export function absColor(n: number): string {
-  return n === 0 ? "text-dimmer" : n <= 3 ? "bg-warn/15 text-warn" : "bg-bad/15 text-bad";
-}
-export function validityColor(n: number, total: number): string {
-  return n >= total * 0.7 ? "text-good" : n >= total * 0.4 ? "text-warn" : "text-bad";
+const LEAGUE_COLORS: Record<string, string> = {
+  "Serie A": "#3f8cff",
+  "Premier League": "#e63c2f",
+  "La Liga": "#f28a00",
+  Bundesliga: "#d40b0b",
+  "Ligue 1": "#ad0dd6",
+};
+
+export function leagueColor(league: string): string {
+  return LEAGUE_COLORS[league] ?? "hsl(var(--muted-foreground))";
 }
 
-const LEAGUE_COLORS: Record<string, string> = {
-  "Serie A": "text-[#4d9fff] bg-[#0078ff26]",
-  "Premier League": "text-[#ef3e2f] bg-[#ef3e2b26]",
-  "La Liga": "text-[#ff8c00] bg-[#ff8c0026]",
-  Bundesliga: "text-[#dc0000] bg-[#dc000026]",
-  "Ligue 1": "text-[#b400dc] bg-[#b400dc26]",
+export type ScoreBand = "high" | "mid" | "low";
+
+export function scoreBand(s: number): ScoreBand {
+  return s >= 70 ? "high" : s >= 50 ? "mid" : "low";
+}
+
+const BAND_TEXT: Record<ScoreBand, string> = {
+  high: "text-[color:hsl(var(--score-high))]",
+  mid: "text-[color:hsl(var(--score-mid))]",
+  low: "text-[color:hsl(var(--score-low))]",
 };
-export function leagueBadge(l: string): string {
-  return LEAGUE_COLORS[l] ?? "text-dim bg-card2";
+
+const BAND_BG_SOFT: Record<ScoreBand, string> = {
+  high: "bg-[color:hsl(var(--score-high)/0.12)] text-[color:hsl(var(--score-high))]",
+  mid: "bg-[color:hsl(var(--score-mid)/0.14)] text-[color:hsl(var(--score-mid))]",
+  low: "bg-[color:hsl(var(--score-low)/0.12)] text-[color:hsl(var(--score-low))]",
+};
+
+const BAND_BAR: Record<ScoreBand, string> = {
+  high: "bg-[color:hsl(var(--score-high))]",
+  mid: "bg-[color:hsl(var(--score-mid))]",
+  low: "bg-[color:hsl(var(--score-low))]",
+};
+
+export function scoreTextClass(s: number): string {
+  return BAND_TEXT[scoreBand(s)];
+}
+export function scoreChipClass(s: number): string {
+  return BAND_BG_SOFT[scoreBand(s)];
+}
+export function metricBarClass(v: number): string {
+  return BAND_BAR[v >= 60 ? "high" : v >= 40 ? "mid" : "low"];
+}
+
+export function validityClass(validity: number, total: number): string {
+  return BAND_TEXT[validity >= total * 0.7 ? "high" : validity >= total * 0.4 ? "mid" : "low"];
+}
+
+export function absencesChipClass(n: number): string {
+  if (n === 0) return "bg-muted text-muted-foreground";
+  if (n <= 3) return BAND_BG_SOFT.mid;
+  return BAND_BG_SOFT.low;
 }
 
 export function formScore(formString: string[] | undefined): number {
@@ -68,3 +102,14 @@ export function getValueEdge(m: Match, side: "home" | "away"): number | null {
   if (filtered.length === 0) return null;
   return Math.max(...filtered.map((v) => v.edge));
 }
+
+export function edgeTier(edge: number): "strong" | "good" | "lean" {
+  return edge >= 15 ? "strong" : edge >= 10 ? "good" : "lean";
+}
+
+export const EDGE_TIER_CLASS: Record<"strong" | "good" | "lean", string> = {
+  strong:
+    "bg-[color:hsl(var(--score-high)/0.15)] text-[color:hsl(var(--score-high))] ring-1 ring-inset ring-[color:hsl(var(--score-high)/0.35)]",
+  good: "bg-warning/15 text-warning ring-1 ring-inset ring-warning/30",
+  lean: "bg-primary/10 text-primary ring-1 ring-inset ring-primary/25",
+};

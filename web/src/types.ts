@@ -101,6 +101,17 @@ export type SourceKey =
   | "tips"
   | "h2h";
 
+export interface GoalTimingSide {
+  gf: number[];
+  ga: number[];
+}
+
+export interface GoalTiming {
+  segments: string[];
+  home: GoalTimingSide;
+  away: GoalTimingSide;
+}
+
 export interface Match {
   id: string | number;
   league: string;
@@ -119,7 +130,7 @@ export interface Match {
   validity: number;
   validity_total: number;
   value_bets: ValueBet[];
-  goal_timing: unknown;
+  goal_timing: GoalTiming | null;
 }
 
 export interface Dashboard {

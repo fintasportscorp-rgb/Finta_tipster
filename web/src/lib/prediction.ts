@@ -1,6 +1,5 @@
-import type { Match, FormMatch, OddsChoice } from "../types";
+import type { Match, FormMatch, OddsChoice } from "@/types";
 
-// Average goals for/against across a team's recent form matches.
 function avgGoals(fm: FormMatch[] | undefined) {
   if (!fm || !fm.length) return null;
   let gf = 0,
@@ -15,13 +14,12 @@ function avgGoals(fm: FormMatch[] | undefined) {
 }
 
 export interface Prediction {
-  eh: number | null; // expected home goals
-  ea: number | null; // expected away goals
+  eh: number | null;
+  ea: number | null;
   total: number | null;
   result: "H" | "D" | "A";
 }
 
-// Predict the likely outcome from the form data we already have.
 export function matchPrediction(m: Match): Prediction {
   const hg = avgGoals(m.home.form_matches);
   const ag = avgGoals(m.away.form_matches);
@@ -43,7 +41,6 @@ function parseLine(s: string): number | null {
   return mch ? parseFloat(mch[1]) : null;
 }
 
-// Index of the choice our model predicts within a market, or -1 if unmappable.
 export function predictedIndex(
   name: string,
   choices: [string, number][],
@@ -53,7 +50,6 @@ export function predictedIndex(
   const mn = (name || "").toLowerCase();
   const norm = choices.map((c) => String(c[0]).toLowerCase().trim());
 
-  // Over / Under (match total, or team total when the market names a side)
   const isOU =
     norm.some((c) => /(^|\s)(over|under|o|u)(\s|$|\d|\/)/.test(c)) ||
     /over|under|o\/u/.test(mn);
@@ -75,7 +71,6 @@ export function predictedIndex(
     }
   }
 
-  // Both teams to score
   if (
     /both teams|btts|gg\/ng/.test(mn) ||
     (norm.includes("yes") && norm.includes("no"))
@@ -89,7 +84,6 @@ export function predictedIndex(
     }
   }
 
-  // Double chance
   if (
     /double chance/.test(mn) ||
     norm.some((c) => /^(1x|12|x2)$/.test(c.replace(/\s/g, "")))
@@ -102,7 +96,6 @@ export function predictedIndex(
     }
   }
 
-  // Match result / 1X2 / team names
   const home = (m.home_team || "").toLowerCase();
   const away = (m.away_team || "").toLowerCase();
   const cat = (c: string): "H" | "A" | "D" | null => {
@@ -123,7 +116,6 @@ export interface OddsMarket {
   predicted: number;
 }
 
-// Build the ordered list of markets (Match Result first, then other markets).
 export function buildMarkets(m: Match, pred: Prediction): OddsMarket[] {
   const markets: OddsMarket[] = [];
   if (m.odds?.home) {
