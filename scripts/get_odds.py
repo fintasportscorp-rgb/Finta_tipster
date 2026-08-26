@@ -162,6 +162,50 @@ THEODDS_LEAGUES = [
 ]
 
 
+import re as _re
+import unicodedata as _ud
+import glob as _glob
+
+# The Odds API names differ from understat (e.g. "Inter Milan" vs "Inter"). Map them to
+# the EXACT understat name so odds attach to the existing fixture instead of duplicating it.
+_ODDS_ALIASES = {
+    "Athletic Bilbao": "Athletic Club",
+    "Inter Milan": "Inter",
+}
+
+
+def _norm_team(s):
+    n = _ud.normalize("NFKD", str(s)).encode("ascii", "ignore").decode().lower()
+    n = _re.sub(r"[^a-z0-9 ]", " ", n)
+    n = _re.sub(
+        r"\b(fc|cf|ac|sc|afc|ca|cd|ud|rc|as|bc|sv|tsg|fsv|vfb|rb|club|calcio|deportivo|"
+        r"united|city|town|hotspur|wanderers|and|hove|albion|1913|1846|05|04)\b",
+        " ",
+        n,
+    )
+    return _re.sub(r"\s+", " ", n).strip()
+
+
+def _load_understat_teams():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    files = sorted(_glob.glob(os.path.join(root, "understat_data", "big5_understat_2026.csv")))
+    if not files:
+        return set(), {}
+    df = pd.read_csv(files[-1])
+    teams = set()
+    for side in ("home_team", "away_team"):
+        teams |= {str(t) for t in df[side].dropna()}
+    return teams, {_norm_team(t): t for t in teams}
+
+
+def _map_team(name, teams, norm_map):
+    if name in _ODDS_ALIASES and _ODDS_ALIASES[name] in teams:
+        return _ODDS_ALIASES[name]
+    if name in teams:
+        return name
+    return norm_map.get(_norm_team(name), name)  # unchanged if no understat match (e.g. Bundesliga)
+
+
 def _naive(iso):
     """The Odds API returns tz-aware ISO (…Z); the app is tz-naive, so drop the tz."""
     if not iso:
@@ -178,6 +222,7 @@ def _naive(iso):
 
 def main_theodds(key):
     rows = []
+    uteams, unorm = _load_understat_teams()
     for league_name, sport in THEODDS_LEAGUES:
         url = (
             f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
@@ -212,7 +257,8 @@ def main_theodds(key):
                             agg["Away"].append(price)
                         elif nm == "Draw":
                             agg["Draw"].append(price)
-            match_name = f"{home} vs {away}"
+            # map API names -> understat names so odds attach to the fixture (no dup row)
+            match_name = f"{_map_team(home, uteams, unorm)} vs {_map_team(away, uteams, unorm)}"
             for choice in ("Home", "Draw", "Away"):
                 vals = agg[choice]
                 if not vals:

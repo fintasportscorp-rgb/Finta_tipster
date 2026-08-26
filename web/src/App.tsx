@@ -74,8 +74,8 @@ export default function App() {
     league: "all",
     query: "",
   });
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey | null>("validity");
+  const [sortDir, setSortDir] = useState(-1);
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
 
   const matches = data?.matches ?? [];
