@@ -321,27 +321,43 @@ def _make_session() -> cloudscraper.CloudScraper:
 # with no key, we go direct via the cloudscraper session (residential home IP, free).
 _SCRAPINGANT_KEY = os.getenv("SCRAPINGANT_KEY")
 
+# ScrapingAnt returns HTTP 200 even on soft-blocks (a tiny Cloudflare interstitial),
+# so we escalate the proxy strength per attempt and treat a small body as a block.
+# Real Transfermarkt pages are ~500KB+; interstitials are a few KB.
+_SA_MODES = [
+    "browser=false&proxy_type=datacenter",   # ~1 credit  (works ~60% of the time)
+    "browser=false&proxy_type=residential",  # ~25 credits (retry on block)
+    "browser=true&proxy_type=residential",   # ~125 credits (last resort)
+]
+_SA_MIN_BYTES = 50_000
+
 
 def fetch_html(session: requests.Session, url: str, retries: int = 3) -> str | None:
     for attempt in range(1, retries + 1):
         try:
             if _SCRAPINGANT_KEY:
+                mode = _SA_MODES[min(attempt - 1, len(_SA_MODES) - 1)]
                 api = (
                     "https://api.scrapingant.com/v2/general?url="
                     + urllib.parse.quote(url, safe="")
-                    + f"&x-api-key={_SCRAPINGANT_KEY}"
-                    + "&browser=false&proxy_type=datacenter"
+                    + f"&x-api-key={_SCRAPINGANT_KEY}&{mode}"
                 )
                 resp = requests.get(api, timeout=120)
+                if resp.status_code == 200 and len(resp.text) >= _SA_MIN_BYTES:
+                    return resp.text
+                print(
+                    f"  ScrapingAnt HTTP {resp.status_code}, {len(resp.text)}B "
+                    f"for {url} (attempt {attempt} — escalating)"
+                )
             else:
                 resp = session.get(url, timeout=30)
-            if resp.status_code == 200:
-                return resp.text
-            print(f"  HTTP {resp.status_code} for {url} (attempt {attempt})")
+                if resp.status_code == 200:
+                    return resp.text
+                print(f"  HTTP {resp.status_code} for {url} (attempt {attempt})")
         except Exception as exc:
             print(f"  Error fetching {url}: {exc} (attempt {attempt})")
         if attempt < retries:
-            time.sleep(random.uniform(4, 8))
+            time.sleep(random.uniform(3, 6))
     return None
 
 
