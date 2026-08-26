@@ -13,6 +13,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
+import requests
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -147,9 +148,97 @@ def frac_to_decimal(frac_str):
     except (ValueError, ZeroDivisionError):
         return None
 
+# ============= THE ODDS API (free, current, always-on) =============
+# Sofascore is bot-blocked from the cloud, so when THEODDS_KEY is set we pull
+# 1X2 odds from The Odds API (the-odds-api.com) instead — 1 request/league,
+# mapped to the exact big5_odds_*.csv schema build_page expects.
+
+THEODDS_LEAGUES = [
+    ("EPL",        "soccer_epl"),
+    ("La Liga",    "soccer_spain_la_liga"),
+    ("Bundesliga", "soccer_germany_bundesliga"),
+    ("Serie A",    "soccer_italy_serie_a"),
+    ("Ligue 1",    "soccer_france_ligue_one"),
+]
+
+
+def main_theodds(key):
+    rows = []
+    for league_name, sport in THEODDS_LEAGUES:
+        url = (
+            f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
+            f"?apiKey={key}&regions=eu&markets=h2h&oddsFormat=decimal"
+        )
+        try:
+            r = requests.get(url, timeout=40)
+            if r.status_code != 200:
+                print(f"  {league_name}: HTTP {r.status_code} {r.text[:120]}")
+                continue
+            events = r.json()
+        except Exception as exc:
+            print(f"  {league_name}: error {exc}")
+            continue
+        print(f"  {league_name}: {len(events)} matches")
+        for ev in events:
+            home, away = ev.get("home_team"), ev.get("away_team")
+            if not home or not away:
+                continue
+            agg = {"Home": [], "Draw": [], "Away": []}
+            for bk in ev.get("bookmakers", []):
+                for mkt in bk.get("markets", []):
+                    if mkt.get("key") != "h2h":
+                        continue
+                    for oc in mkt.get("outcomes", []):
+                        nm, price = oc.get("name"), oc.get("price")
+                        if price is None:
+                            continue
+                        if nm == home:
+                            agg["Home"].append(price)
+                        elif nm == away:
+                            agg["Away"].append(price)
+                        elif nm == "Draw":
+                            agg["Draw"].append(price)
+            match_name = f"{home} vs {away}"
+            for choice in ("Home", "Draw", "Away"):
+                vals = agg[choice]
+                if not vals:
+                    continue
+                dec = round(sum(vals) / len(vals), 2)  # avg across bookmakers
+                rows.append({
+                    "league": league_name,
+                    "match_date": ev.get("commence_time"),
+                    "match_name": match_name,
+                    "game_id": ev.get("id"),
+                    "market_name": "Full Time Result",
+                    "choice_name": choice,
+                    "opening_odds": dec,
+                    "current_odds": dec,
+                    "change": 0,
+                    "is_live": False,
+                })
+    if not rows:
+        print("No odds returned from The Odds API.")
+        return
+    out = pd.DataFrame(rows)[[
+        "league", "match_date", "match_name", "game_id", "market_name",
+        "choice_name", "opening_odds", "current_odds", "change", "is_live",
+    ]].sort_values(["match_date", "league", "match_name"]).reset_index(drop=True)
+    input_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "input")
+    os.makedirs(input_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    filename = os.path.join(input_dir, f"big5_odds_{timestamp}.csv")
+    out.to_csv(filename, index=False, encoding="utf-8")
+    print(f"\nExported -> {filename} ({len(out)} rows, {out['match_name'].nunique()} matches)")
+
+
 # ================= MAIN =================
 
 def main():
+    _theodds_key = os.getenv("THEODDS_KEY")
+    if _theodds_key:
+        print("Fetching Big 5 odds via The Odds API (current, free)...")
+        return main_theodds(_theodds_key)
+
     week_dates = get_current_week_dates()
     print(f"Fetching Big 5 matches for week: {week_dates[0]} to {week_dates[-1]}")
     print(f"Leagues: {', '.join(name for _, _, name in LEAGUES)}")
