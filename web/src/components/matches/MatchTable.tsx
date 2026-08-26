@@ -160,89 +160,89 @@ export default function MatchTable({
       <Table className="text-[13px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <SortableTh k="league" {...{ sortKey, sortDir, onSort }} className="sticky top-14 z-10">
+            <SortableTh k="league" {...{ sortKey, sortDir, onSort }} className="">
               Comp
             </SortableTh>
             <SortableTh
               k="datetime"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL)}
+              className={cn("", LATERAL)}
             >
               Kick-off
             </SortableTh>
-            <SortableTh k="home_team" {...{ sortKey, sortDir, onSort }} className="sticky top-14 z-10">
+            <SortableTh k="home_team" {...{ sortKey, sortDir, onSort }} className="">
               Home
             </SortableTh>
             <SortableTh
               k="home_score"
               {...{ sortKey, sortDir, onSort }}
-              className="sticky top-14 z-10 text-center"
+              className="text-center"
             >
               Fm
             </SortableTh>
             <SortableTh
               k="home_form"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL)}
+              className={cn("", LATERAL)}
             >
               Form
             </SortableTh>
             <SortableTh
               k="home_abs"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL, "text-center")}
+              className={cn("", LATERAL, "text-center")}
             >
               Out
             </SortableTh>
             <SortableTh
               k="away_score"
               {...{ sortKey, sortDir, onSort }}
-              className="sticky top-14 z-10 text-center"
+              className="text-center"
             >
               Fm
             </SortableTh>
             <SortableTh
               k="away_form"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL)}
+              className={cn("", LATERAL)}
             >
               Form
             </SortableTh>
             <SortableTh
               k="away_abs"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL, "text-center")}
+              className={cn("", LATERAL, "text-center")}
             >
               Out
             </SortableTh>
-            <SortableTh k="away_team" {...{ sortKey, sortDir, onSort }} className="sticky top-14 z-10">
+            <SortableTh k="away_team" {...{ sortKey, sortDir, onSort }} className="">
               Away
             </SortableTh>
             <SortableTh
               k="odds"
               {...{ sortKey, sortDir, onSort }}
-              className="sticky top-14 z-10 text-center"
+              className="text-center"
             >
               Odds H·D·A
             </SortableTh>
             <SortableTh
               k="validity"
               {...{ sortKey, sortDir, onSort }}
-              className={cn("sticky top-14 z-10", LATERAL)}
+              className={cn("", LATERAL)}
             >
               Data
             </SortableTh>
             <SortableTh
               k="value_home"
               {...{ sortKey, sortDir, onSort }}
-              className="sticky top-14 z-10 text-center"
+              className="text-center"
             >
               Val H
             </SortableTh>
             <SortableTh
               k="value_away"
               {...{ sortKey, sortDir, onSort }}
-              className="sticky top-14 z-10 text-center"
+              className="text-center"
             >
               Val A
             </SortableTh>

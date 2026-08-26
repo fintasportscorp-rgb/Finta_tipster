@@ -7,7 +7,7 @@ export default function Header({ data }: { data: Dashboard | null }) {
   const { theme, toggle } = useTheme();
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between gap-3">
+      <div className="mx-auto flex h-14 w-full max-w-[1760px] items-center justify-between gap-3 px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <img
             src="/finta_logo.png"
@@ -16,7 +16,7 @@ export default function Header({ data }: { data: Dashboard | null }) {
           />
           <div className="min-w-0 leading-tight">
             <h1 className="truncate text-sm font-bold sm:text-base">
-              Finta Tipster
+              Tipster
               <span className="ml-1.5 hidden text-xs font-medium text-muted-foreground sm:inline">
                 Big 5 Match Form
               </span>

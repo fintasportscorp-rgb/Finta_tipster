@@ -71,27 +71,28 @@ function MatchCard({ m, rollingWindow }: { m: Match; rollingWindow: number }) {
             className="w-full px-3 py-3 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:bg-accent/40"
             aria-expanded={open}
           >
-            <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-2.5">
               <span className="truncate text-sm font-semibold">{m.home.team}</span>
-              <FormBoxes form={m.home.form_string} boxClass="h-5 w-5 text-[9px]" className="hidden xs:flex" />
+              <FormBoxes
+                form={m.home.form_string}
+                boxClass="h-5 w-5 text-[9px]"
+                className="hidden justify-self-end xs:flex"
+              />
               <ScoreBadge score={m.home.score} size="sm" />
-
               <ChevronDown
                 className={cn(
-                  "!size-4 row-span-2 self-center text-muted-foreground transition-transform duration-200",
+                  "!size-4 row-span-2 self-center justify-self-end text-muted-foreground transition-transform duration-200",
                   open && "rotate-180",
                 )}
               />
 
-              <span className="col-span-1 col-start-1 truncate text-sm font-semibold">
-                {m.away.team}
-              </span>
-              <span className="row-start-2">
-                <FormBoxes form={m.away.form_string} boxClass="h-5 w-5 text-[9px]" className="hidden xs:flex" />
-              </span>
-              <span className="row-start-2">
-                <ScoreBadge score={m.away.score} size="sm" />
-              </span>
+              <span className="col-start-1 truncate text-sm font-semibold">{m.away.team}</span>
+              <FormBoxes
+                form={m.away.form_string}
+                boxClass="h-5 w-5 text-[9px]"
+                className="hidden justify-self-end xs:flex"
+              />
+              <ScoreBadge score={m.away.score} size="sm" />
             </div>
           </button>
         </CollapsibleTrigger>
