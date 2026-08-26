@@ -43,6 +43,7 @@ jobs:
       - name: Run scrapers (resilient; report per-source result)
         env:
           ONLY: ${{ github.event.inputs.only }}
+          SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
         run: |
           mkdir -p understat_data data input
           ALL="understat.py friendly_scraper.py soccerstats_scraper.py tm_absences.py formation_analysis.py get_odds.py expert_scraper.py"
