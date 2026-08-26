@@ -46,6 +46,20 @@ ALIASES = {
 }
 
 
+def _naive(iso):
+    """ESPN returns tz-aware ISO (…Z); the app is tz-naive, so drop the tz."""
+    if not iso:
+        return iso
+    try:
+        return (
+            datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+            .replace(tzinfo=None)
+            .strftime("%Y-%m-%d %H:%M:%S")
+        )
+    except Exception:
+        return iso
+
+
 def normalize_name(name):
     """Mirror of build_page.normalize_name so matched names collapse the same way."""
     if not isinstance(name, str):
@@ -157,7 +171,7 @@ def main():
             lg = team_league.get(h_match) or team_league.get(a_match) or "Friendly"
             rows.append({
                 "league": lg,
-                "datetime": ev.get("date"),
+                "datetime": _naive(ev.get("date")),
                 "home_team": h_match or h_name,
                 "away_team": a_match or a_name,
                 "home_goals": hg,
