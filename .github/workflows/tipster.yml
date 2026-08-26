@@ -44,6 +44,7 @@ jobs:
         env:
           ONLY: ${{ github.event.inputs.only }}
           SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
+          THEODDS_KEY: ${{ secrets.THEODDS_KEY }}
         run: |
           mkdir -p understat_data data input
           ALL="understat.py friendly_scraper.py soccerstats_scraper.py tm_absences.py formation_analysis.py get_odds.py expert_scraper.py"
