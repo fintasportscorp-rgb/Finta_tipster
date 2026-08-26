@@ -162,6 +162,20 @@ THEODDS_LEAGUES = [
 ]
 
 
+def _naive(iso):
+    """The Odds API returns tz-aware ISO (…Z); the app is tz-naive, so drop the tz."""
+    if not iso:
+        return iso
+    try:
+        return (
+            datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+            .replace(tzinfo=None)
+            .strftime("%Y-%m-%d %H:%M:%S")
+        )
+    except Exception:
+        return iso
+
+
 def main_theodds(key):
     rows = []
     for league_name, sport in THEODDS_LEAGUES:
@@ -206,7 +220,7 @@ def main_theodds(key):
                 dec = round(sum(vals) / len(vals), 2)  # avg across bookmakers
                 rows.append({
                     "league": league_name,
-                    "match_date": ev.get("commence_time"),
+                    "match_date": _naive(ev.get("commence_time")),
                     "match_name": match_name,
                     "game_id": ev.get("id"),
                     "market_name": "Full Time Result",
