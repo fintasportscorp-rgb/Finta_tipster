@@ -38,7 +38,7 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy requests beautifulsoup4 selenium "understatapi==0.7.1" tqdm lxml cloudscraper
+          pip install pandas numpy requests beautifulsoup4 selenium "understatapi==0.7.1" tqdm lxml cloudscraper curl_cffi
 
       - name: Run scrapers (resilient; report per-source result)
         env:
@@ -47,7 +47,7 @@ jobs:
           THEODDS_KEY: ${{ secrets.THEODDS_KEY }}
         run: |
           mkdir -p understat_data data input
-          ALL="understat.py friendly_scraper.py soccerstats_scraper.py tm_absences.py formation_analysis.py get_odds.py expert_scraper.py"
+          ALL="understat.py friendly_scraper.py soccerstats_scraper.py tm_absences.py get_odds.py expert_scraper.py"
           if [ -n "$ONLY" ]; then LIST=$(echo "$ONLY" | tr ',' ' '); else LIST="$ALL"; fi
           echo "Running: $LIST"
           for s in $LIST; do
