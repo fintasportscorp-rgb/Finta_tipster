@@ -27,6 +27,7 @@ import time
 import random
 from datetime import datetime
 
+import urllib.parse
 import requests
 import urllib3
 import cloudscraper
@@ -315,10 +316,25 @@ def _make_session() -> cloudscraper.CloudScraper:
     return s
 
 
+# When SCRAPINGANT_KEY is set (CI), route Transfermarkt through ScrapingAnt's unlocker
+# API (datacenter+no-browser = 1 credit/request, which cracks TM's Cloudflare). Locally,
+# with no key, we go direct via the cloudscraper session (residential home IP, free).
+_SCRAPINGANT_KEY = os.getenv("SCRAPINGANT_KEY")
+
+
 def fetch_html(session: requests.Session, url: str, retries: int = 3) -> str | None:
     for attempt in range(1, retries + 1):
         try:
-            resp = session.get(url, timeout=30)
+            if _SCRAPINGANT_KEY:
+                api = (
+                    "https://api.scrapingant.com/v2/general?url="
+                    + urllib.parse.quote(url, safe="")
+                    + f"&x-api-key={_SCRAPINGANT_KEY}"
+                    + "&browser=false&proxy_type=datacenter"
+                )
+                resp = requests.get(api, timeout=120)
+            else:
+                resp = session.get(url, timeout=30)
             if resp.status_code == 200:
                 return resp.text
             print(f"  HTTP {resp.status_code} for {url} (attempt {attempt})")
